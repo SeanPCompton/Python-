@@ -1,0 +1,116 @@
+import pandas as pd
+import sqlite3
+
+# File paths
+SALES_TAX_FILE = "sales_tax_data.xlsx"
+MARKETING_FILE = "marketing_data.xlsx"
+DATABASE_FILE = "standardized_data.db"
+
+# Standardized table names
+SALES_TAX_TABLE = "SalesTax"
+MARKETING_TABLE = "Marketing"
+
+def clean_sales_tax_data(file_path):
+    """Clean and standardize sales tax data."""
+    # Load Excel data
+    sales_tax_df = pd.read_excel(file_path, sheet_name=0)
+
+    # Preview raw data
+    print("Raw Sales Tax Data:")
+    print(sales_tax_df.head())
+
+    # Clean and standardize columns
+    sales_tax_df.columns = sales_tax_df.columns.str.strip().str.replace(" ", "_").str.lower()
+    sales_tax_df.rename(columns={
+        'state_name': 'state',
+        'city_name': 'city',
+        'zip': 'zip_code',
+        'tax_rate_percent': 'tax_rate'
+    }, inplace=True)
+
+    # Handle missing values
+    sales_tax_df.fillna({
+        'state': 'UNKNOWN',
+        'city': 'UNKNOWN',
+        'zip_code': '00000',
+        'tax_rate': 0.0
+    }, inplace=True)
+
+    # Normalize zip codes to ensure consistent length
+    sales_tax_df['zip_code'] = sales_tax_df['zip_code'].astype(str).str.zfill(5)
+
+    # Convert tax rates to float (if percentages are stored as strings)
+    sales_tax_df['tax_rate'] = sales_tax_df['tax_rate'].astype(float) / 100 if sales_tax_df['tax_rate'].max() > 1 else sales_tax_df['tax_rate']
+
+    # Drop duplicates
+    sales_tax_df.drop_duplicates(inplace=True)
+
+    print("Cleaned Sales Tax Data:")
+    print(sales_tax_df.head())
+
+    return sales_tax_df
+
+def clean_marketing_data(file_path):
+    """Clean and standardize marketing data."""
+    # Load Excel data
+    marketing_df = pd.read_excel(file_path, sheet_name=0)
+
+    # Preview raw data
+    print("Raw Marketing Data:")
+    print(marketing_df.head())
+
+    # Clean and standardize columns
+    marketing_df.columns = marketing_df.columns.str.strip().str.replace(" ", "_").str.lower()
+    marketing_df.rename(columns={
+        'customer_name': 'customer',
+        'campaign_code': 'campaign',
+        'purchase_amount_usd': 'purchase_amount',
+        'purchase_date': 'purchase_date'
+    }, inplace=True)
+
+    # Handle missing values
+    marketing_df.fillna({
+        'customer': 'UNKNOWN',
+        'campaign': 'UNKNOWN',
+        'purchase_amount': 0.0,
+        'purchase_date': pd.NaT
+    }, inplace=True)
+
+    # Parse and standardize dates
+    marketing_df['purchase_date'] = pd.to_datetime(marketing_df['purchase_date'], errors='coerce')
+
+    # Drop rows with invalid dates
+    marketing_df = marketing_df[marketing_df['purchase_date'].notna()]
+
+    # Drop duplicates
+    marketing_df.drop_duplicates(inplace=True)
+
+    print("Cleaned Marketing Data:")
+    print(marketing_df.head())
+
+    return marketing_df
+
+def save_to_database(dataframe, table_name, db_file):
+    """Save a DataFrame to a SQLite database."""
+    conn = sqlite3.connect(db_file)
+    try:
+        dataframe.to_sql(table_name, conn, if_exists='replace', index=False)
+        print(f"Data saved to {table_name} table in {db_file}.")
+    finally:
+        conn.close()
+
+def main():
+    # Step 1: Clean sales tax data
+    sales_tax_df = clean_sales_tax_data(SALES_TAX_FILE)
+
+    # Step 2: Clean marketing data
+    marketing_df = clean_marketing_data(MARKETING_FILE)
+
+    # Step 3: Save cleaned data to SQLite database
+    save_to_database(sales_tax_df, SALES_TAX_TABLE, DATABASE_FILE)
+    save_to_database(marketing_df, MARKETING_TABLE, DATABASE_FILE)
+
+    print("All data has been processed and saved successfully.")
+
+if __name__ == "__main__":
+    main()
