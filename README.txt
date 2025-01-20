@@ -1,4 +1,4 @@
-file.txt is a smaller sample data file
+
 
 Crunchbase Company Data File for Py Script.txt is the full company file to be run through the API
 
