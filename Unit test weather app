@@ -1,0 +1,23 @@
+import unittest
+from unittest.mock import patch
+from weather_app import fetch_weather
+
+class TestWeatherApp(unittest.TestCase):
+    
+    @patch('requests.get')
+    def test_fetch_weather(self, mock_get):
+        # Mock API response
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "main": {"temp": 25},
+            "weather": [{"description": "clear sky"}]
+        }
+        
+        expected_output = "Weather in TestCity:\nTemperature: 25°C\nDescription: Clear sky"
+        
+        with patch('builtins.print') as mocked_print:
+            fetch_weather("TestCity")
+            mocked_print.assert_any_call(expected_output)
+
+if __name__ == '__main__':
+    unittest.main()
