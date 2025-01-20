@@ -1,0 +1,87 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+# File path for the input data
+DATA_FILE = "marketing_churn_data.csv"
+
+def load_data(file_path):
+    """Load marketing churn and subscription data from a CSV file."""
+    data = pd.read_csv(file_path)
+    print("Raw Data Preview:")
+    print(data.head())
+    return data
+
+def clean_data(data):
+    """Clean and preprocess the data."""
+    # Drop rows with missing values
+    data = data.dropna()
+
+    # Standardize column names
+    data.columns = data.columns.str.strip().str.lower().str.replace(" ", "_")
+
+    # Convert categorical variables (e.g., subscription_type) to dummy variables
+    if "subscription_type" in data.columns:
+        data = pd.get_dummies(data, columns=["subscription_type"], drop_first=True)
+
+    print("Cleaned Data Preview:")
+    print(data.head())
+    return data
+
+def perform_regression(data):
+    """Perform regression analysis on churn data."""
+    # Define predictors (X) and target variable (y)
+    X = data[["marketing_spend", "subscription_tenure", "discount_offered", "subscription_type_premium"]]
+    y = data["churn_probability"]
+
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train a linear regression model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred = model.predict(X_test)
+
+    # Calculate performance metrics
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    print("\n=== Regression Analysis Results ===")
+    print(f"Mean Squared Error: {mse:.4f}")
+    print(f"R-squared: {r2:.4f}")
+    print("\nFeature Coefficients:")
+    for feature, coef in zip(X.columns, model.coef_):
+        print(f"{feature}: {coef:.4f}")
+
+    return model, X_test, y_test, y_pred
+
+def plot_results(y_test, y_pred):
+    """Plot the actual vs predicted churn probabilities."""
+    plt.figure(figsize=(8, 6))
+    plt.scatter(y_test, y_pred, alpha=0.7, color="blue")
+    plt.plot([0, 1], [0, 1], "--", color="red")  # Perfect prediction line
+    plt.xlabel("Actual Churn Probability")
+    plt.ylabel("Predicted Churn Probability")
+    plt.title("Actual vs Predicted Churn Probability")
+    plt.show()
+
+def main():
+    # Step 1: Load the data
+    data = load_data(DATA_FILE)
+
+    # Step 2: Clean the data
+    data = clean_data(data)
+
+    # Step 3: Perform regression analysis
+    model, X_test, y_test, y_pred = perform_regression(data)
+
+    # Step 4: Plot the results
+    plot_results(y_test, y_pred)
+
+if __name__ == "__main__":
+    main()
